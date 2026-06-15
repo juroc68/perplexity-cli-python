@@ -1,30 +1,34 @@
 # Perplexity CLI Python
 
-Client terminal Python pour l'API Sonar de Perplexity. Il propose une question
-ponctuelle ou une conversation interactive avec streaming et citations.
+Client Python en ligne de commande pour interroger l'API Sonar de Perplexity
+depuis un terminal. Il prend en charge les requêtes ponctuelles, les
+conversations interactives, l'affichage progressif des réponses et les
+citations retournées par l'API.
 
-Cette version est un client conversationnel. Elle ne lit pas et ne modifie pas
-les fichiers du poste comme un agent de développement.
+> [!NOTE]
+> Ce projet est une intégration indépendante. Il n'est ni maintenu, ni affilié,
+> ni officiellement approuvé par Perplexity AI.
 
-## Pourquoi cette architecture ?
+## Fonctionnalités
 
-La bibliothèque standard Python suffit pour envoyer une requête HTTPS et lire
-le flux SSE de Perplexity. L'absence de dépendance réduit la surface d'attaque
-et simplifie l'audit du projet.
+- requête unique depuis la ligne de commande ;
+- session interactive avec conservation du contexte ;
+- réponses en streaming, désactivables avec `--no-stream` ;
+- affichage des sources fournies par l'API ;
+- sélection du modèle Sonar ;
+- aucune dépendance Python à l'exécution.
 
-Mesures de sécurité incluses :
+## Prérequis
 
-- endpoint HTTPS obligatoire ;
-- délai réseau configurable ;
-- réponse limitée à 10 Mio ;
-- suppression des séquences de contrôle avant affichage dans le terminal ;
-- clé API lue uniquement depuis `PERPLEXITY_API_KEY` ;
-- modèle économique `sonar` utilisé par défaut.
+- Python 3.10 ou une version ultérieure ;
+- une clé d'API Perplexity.
+
+La clé peut être créée depuis la
+[console Perplexity](https://console.perplexity.ai/).
 
 ## Installation
 
-Un environnement virtuel isole les dépendances de ce projet du reste de la
-machine.
+Depuis la racine du dépôt :
 
 ```bash
 python3 -m venv .venv
@@ -32,7 +36,7 @@ source .venv/bin/activate
 python3 -m pip install -e .
 ```
 
-Vérification :
+Vérifiez ensuite que la commande est disponible :
 
 ```bash
 pplx-python --version
@@ -41,42 +45,108 @@ pplx-python --help
 
 ## Configuration
 
-Créez une clé dans le [portail API](https://console.perplexity.ai/) puis
-définissez-la uniquement pour le terminal courant :
+Définissez la clé d'API dans la variable d'environnement
+`PERPLEXITY_API_KEY` :
 
 ```bash
 export PERPLEXITY_API_KEY="pplx-votre-cle"
 ```
 
-Piège fréquent : l'abonnement Web ou Enterprise ne rend pas nécessairement les
-appels API gratuits. Désactivez le rechargement automatique des crédits pour
-éviter une facturation inattendue.
+Le modèle par défaut est `sonar`. La variable `PERPLEXITY_MODEL` permet d'en
+choisir un autre sans ajouter l'option `--model` à chaque commande :
+
+```bash
+export PERPLEXITY_MODEL="sonar-pro"
+```
+
+Ne placez pas de clé réelle dans un fichier suivi par Git.
 
 ## Utilisation
 
+### Requête ponctuelle
+
+Passez la question directement en argument :
+
+```bash
+pplx-python "Quelles sont les principales nouveautés de Python 3.13 ?"
+```
+
+Exemples avec des options supplémentaires :
+
+```bash
+pplx-python --model sonar-pro "Compare PostgreSQL et SQLite"
+pplx-python --no-stream "Explique le protocole HTTP"
+pplx-python --no-citations "Résume les principes de REST"
+pplx-python --system "Réponds de manière concise." "Qu'est-ce qu'un CDN ?"
+```
+
+### Mode interactif
+
+Lancez la commande sans question pour ouvrir une conversation :
+
 ```bash
 pplx-python
-pplx-python "Explique le fonctionnement des modèles de langage"
-pplx-python --model sonar-pro "Compare Python et JavaScript"
 ```
 
-Dans le mode interactif :
+Commandes disponibles pendant la session :
+
+| Commande | Description |
+| --- | --- |
+| `/help` | Affiche la liste des commandes |
+| `/clear` | Efface l'historique de la conversation |
+| `/model <nom>` | Change de modèle pour les requêtes suivantes |
+| `/exit` ou `/quit` | Ferme la session |
+
+### Modèles pris en charge
+
+- `sonar`
+- `sonar-pro`
+- `sonar-reasoning-pro`
+- `sonar-deep-research`
+
+La disponibilité des modèles dépend de l'accès associé à la clé d'API.
+
+### Options principales
 
 ```text
-/help
-/clear
-/model sonar-pro
-/exit
+-m, --model MODEL       modèle Sonar à utiliser
+-s, --system MESSAGE    instruction système
+--no-stream             attend la réponse complète avant de l'afficher
+--no-citations          masque la liste des URL sources
+--timeout SECONDS       délai maximal de la requête réseau (60 par défaut)
+--version               affiche la version du client
 ```
 
-Pour une question confidentielle, privilégiez le mode interactif. Une question
-passée directement dans la commande peut rester dans l'historique du shell.
+La commande `pplx-python --help` fournit la liste de référence des options.
 
-## Vérifications
+## Sécurité
+
+Le client :
+
+- transmet la clé d'API dans l'en-tête HTTP `Authorization` ;
+- refuse les endpoints qui n'utilisent pas HTTPS ;
+- limite chaque réponse à 10 Mio ;
+- supprime les séquences de contrôle avant l'affichage dans le terminal ;
+- applique un délai maximal configurable aux appels réseau.
+
+Une question passée comme argument peut être enregistrée dans l'historique du
+shell. Utilisez le mode interactif lorsque le contenu de la question ne doit
+pas y apparaître.
+
+## Développement
+
+Le projet utilise uniquement la bibliothèque standard de Python à l'exécution.
+Les tests unitaires simulent les réponses HTTP et n'effectuent aucun appel à
+l'API Perplexity.
 
 ```bash
 python3 -m unittest discover -s tests -v
 python3 -m compileall -q src tests
 ```
 
-Les tests n'effectuent aucun appel réseau et ne consomment aucun crédit API.
+## Licence
+
+Ce projet est distribué sous licence MIT.
+
+Perplexity et Sonar sont des marques ou noms de produits appartenant à leurs
+propriétaires respectifs.
